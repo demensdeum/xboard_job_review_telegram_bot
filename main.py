@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Variables are kept as non-localized environment variables
 bot_api_key = os.environ["TELEGRAM_BOT_API_KEY"]
 chat_id = os.environ["TELEGRAM_CHAT_ID"]
 
@@ -31,25 +32,25 @@ MAIN_MENU_KEYBOARD = [
     ["🗑️ Удалить все отклики"]
 ]
 
-CONVERSATION_CANCEL_KEYBOARD = [["❌ Cancel"]]
+CONVERSATION_CANCEL_KEYBOARD = [["❌ Отмена"]]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.effective_user
 
     await update.message.reply_html(
-        f"Hello, {user.mention_html()}! Use the button below to start submitting a review.",
+        f"Привет, {user.mention_html()}! Используйте кнопку ниже, чтобы начать оставлять отзыв.",
         reply_markup=ReplyKeyboardMarkup(
             MAIN_MENU_KEYBOARD,
             one_time_keyboard=True,
             resize_keyboard=True,
-            input_field_placeholder="Select an option"
+            input_field_placeholder="Выберите опцию"
         ),
     )
     return ConversationHandler.END
 
 async def start_review_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
-        "Пишите только контакты на того кого оставляете отклик, например название фирмы, ник в Телеграме, email. Другие пользователи группы обратяться к вам за отзывом, при необходимости.",
+        "Укажите только контакты того, о ком вы оставляете отклик (например, название компании, ник в Телеграме, email). Другие пользователи группы смогут обратиться к вам за отзывом, при необходимости.",
         reply_markup=ReplyKeyboardMarkup(
             CONVERSATION_CANCEL_KEYBOARD,
             one_time_keyboard=True,
@@ -63,7 +64,6 @@ async def get_contacts_and_notify(update: Update, context: ContextTypes.DEFAULT_
     website_contacts = update.message.text
     user = update.effective_user
 
-    user_name = user.full_name
     user_mention = user.mention_html()
 
     notification_message = (
@@ -79,7 +79,7 @@ async def get_contacts_and_notify(update: Update, context: ContextTypes.DEFAULT_
 
     except Exception as e:
         await update.message.reply_text(
-            f"❌ An error occurred while sending the notification. Please check the bot's configuration and permissions in the admin group. Error: {e}",
+            f"❌ Произошла ошибка при отправке уведомления. Пожалуйста, проверьте конфигурацию бота и его права в группе администраторов. Ошибка: {e}",
             reply_markup=ReplyKeyboardMarkup(MAIN_MENU_KEYBOARD, one_time_keyboard=True),
         )
         return ConversationHandler.END
@@ -96,18 +96,14 @@ async def remove_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user = update.effective_user
 
     retraction_message = (
-        "🛑 **REVIEW DELETION REQUEST** 🛑\n\n"
-        f"**User:** {user.mention_html()} (ID: `{user.id}`)\n"
-        "This user is requesting that **ALL** of their previously submitted reviews "
-        "and related records be permanently deleted from the database/logs.\n\n"
-        "**ACTION REQUIRED BY ADMIN**"
+        f"Пользователь: {user.mention_html()} запрашивает удаление всех отзывов"
     )
 
     try:
         if not chat_id:
              await context.bot.send_message(
                 chat_id=user.id,
-                text="⚠️ Warning: Admin chat ID is not configured. Deletion request was only logged."
+                text="⚠️ Внимание: ID чата администратора не настроен. Запрос на удаление был только зарегистрирован в логах."
             )
         else:
             await context.bot.send_message(
@@ -118,28 +114,28 @@ async def remove_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     except Exception as e:
         await update.message.reply_text(
-            f"❌ An error occurred while sending the deletion request. Please contact support manually. Error: {e}",
+            f"❌ Произошла ошибка при отправке запроса на удаление. Пожалуйста, свяжитесь со службой поддержки вручную. Ошибка: {e}",
             reply_markup=ReplyKeyboardMarkup(MAIN_MENU_KEYBOARD, one_time_keyboard=True),
         )
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "✅ Your request to remove all your submitted reviews has been forwarded to the administration. "
-        "An admin will manually process this request.",
+        "✅ Ваш запрос на удаление всех ваших отзывов был передан администрации. "
+        "Администратор обработает этот запрос вручную.",
         reply_markup=ReplyKeyboardMarkup(MAIN_MENU_KEYBOARD, one_time_keyboard=True),
     )
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
-        "Conversation cancelled. What would you like to do next?",
+        "Разговор отменен. Что бы вы хотели сделать дальше?",
         reply_markup=ReplyKeyboardMarkup(MAIN_MENU_KEYBOARD, one_time_keyboard=True),
     )
     return ConversationHandler.END
 
 async def fallback_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "I'm not sure what you mean. Use the 'Write a review' button or /start.",
+        "Я не понимаю, что вы имеете в виду. Используйте кнопку '✍️ Написать отклик' или команду /start.",
         reply_markup=ReplyKeyboardMarkup(MAIN_MENU_KEYBOARD, one_time_keyboard=True),
     )
 
@@ -152,11 +148,11 @@ def main():
         ],
 
         states={
-            ASK_CONTACTS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Cancel$"), get_contacts_and_notify)],
+            ASK_CONTACTS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Отмена$"), get_contacts_and_notify)],
         },
 
         fallbacks=[
-            MessageHandler(filters.Regex("^❌ Cancel$"), cancel),
+            MessageHandler(filters.Regex("^❌ Отмена$"), cancel),
             CommandHandler("cancel", cancel)
         ],
     )
@@ -168,7 +164,7 @@ def main():
     application.add_handler(MessageHandler(filters.Regex("^🗑️ Удалить все отклики$"), remove_reviews))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, fallback_text))
 
-    print("Bot is running. Press Ctrl-C to stop.")
+    print("Бот запущен. Нажмите Ctrl-C для остановки.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
